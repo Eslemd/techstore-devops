@@ -132,22 +132,21 @@ pipeline {
         }
 
         stage('Smoke Test') {
-            steps {
+    steps {
+        sh '''
+            sleep 10
 
-                sh '''
-                    sleep 10
+            STATUS=$(docker exec techstore-app curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
 
-                    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
+            echo "Health Status: $STATUS"
 
-                    if [ "$STATUS" != "200" ]; then
-                        echo "Smoke test failed!"
-                        exit 1
-                    fi
-
-                    echo "Smoke test passed!"
-                '''
-            }
-        }
+            if [ "$STATUS" != "200" ]; then
+                echo "Application health check failed!"
+                exit 1
+            fi
+        '''
+    }
+}
     }
 
     post {
