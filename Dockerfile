@@ -3,6 +3,7 @@ FROM python:3.11-slim
 # Sistem bağımlılıkları
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Çalışma dizini
