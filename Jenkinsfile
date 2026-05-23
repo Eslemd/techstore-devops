@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'eslemd/techstore-app'
+        DOCKER_IMAGE = "eslemd/techstore-app"
+        SONARQUBE_ENV = "SonarQube"
     }
 
     stages {
@@ -32,13 +33,11 @@ pipeline {
 
                     mkdir -p test-results
 
-                    pytest tests/test_app.py \
-                        -v \
-                        --tb=short \
-                        --junit-xml=test-results/unit-tests.xml \
-                        --cov=app \
-                        --cov-report=xml:coverage.xml \
-                        --cov-report=term-missing
+                    pytest tests/test_app.py -v --tb=short \
+                    --junit-xml=test-results/unit-tests.xml \
+                    --cov=app \
+                    --cov-report=xml:coverage.xml \
+                    --cov-report=term-missing
                 '''
             }
 
@@ -56,19 +55,18 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-
                     def scannerHome = tool 'SonarScanner'
 
-                    withSonarQubeEnv('SonarQube') {
+                    withSonarQubeEnv("${SONARQUBE_ENV}") {
 
                         sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=techstore \
-                            -Dsonar.projectName='TechStore E-Commerce' \
-                            -Dsonar.sources=. \
-                            -Dsonar.exclusions=venv/**,tests/**,**/__pycache__/**,templates/**,static/** \
-                            -Dsonar.python.version=3.13 \
-                            -Dsonar.python.coverage.reportPaths=coverage.xml
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=techstore \
+                        -Dsonar.projectName='TechStore E-Commerce' \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=venv/**,tests/**,**/__pycache__/**,templates/**,static/** \
+                        -Dsonar.python.version=3.13 \
+                        -Dsonar.python.coverage.reportPaths=coverage.xml
                         """
                     }
                 }
@@ -85,79 +83,82 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh """
-                    docker build \
+                sh '''
+                    docker builder prune -af || true
+
+                    DOCKER_BUILDKIT=0 docker build \
                     -t ${DOCKER_IMAGE}:${BUILD_NUMBER} \
                     -t ${DOCKER_IMAGE}:latest .
-                """
+                '''
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'docker-hub-creds',
+                        credentialsId: 'dockerhub-creds',
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
 
-                    sh """
-                        echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 
                         docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
                         docker push ${DOCKER_IMAGE}:latest
-                    """
+                    '''
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-
-                sh """
+                sh '''
                     docker stop techstore-app || true
                     docker rm techstore-app || true
 
                     docker pull ${DOCKER_IMAGE}:latest
 
                     docker run -d \
-                        --name techstore-app \
-                        -p 5000:5000 \
-                        ${DOCKER_IMAGE}:latest
-                """
+                    --name techstore-app \
+                    -p 5000:5000 \
+                    ${DOCKER_IMAGE}:latest
+                '''
             }
         }
 
         stage('Smoke Test') {
-    steps {
-        sh '''
-            sleep 10
+            steps {
+                sh '''
+                    sleep 10
 
-            STATUS=$(docker exec techstore-app curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
+                    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
 
-            echo "Health Status: $STATUS"
+                    if [ "$STATUS" != "200" ]; then
+                        echo "Smoke test failed!"
+                        exit 1
+                    fi
 
-            if [ "$STATUS" != "200" ]; then
-                echo "Application health check failed!"
-                exit 1
-            fi
-        '''
-    }
-}
+                    echo "Smoke test passed!"
+                '''
+            }
+        }
     }
 
     post {
-
         always {
-
-            sh '''
-                docker image prune -f || true
-            '''
-
+            sh 'docker image prune -f'
             cleanWs()
+        }
+
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
