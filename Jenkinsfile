@@ -58,16 +58,14 @@ pipeline {
        stage('SonarQube Analysis') {
     steps {
         withSonarQubeEnv('SonarQube') {
-            sh """
-                . venv/bin/activate
-
-                ${SCANNER_HOME}/bin/sonar-scanner \
+            sh '''
+                sonar-scanner \
                 -Dsonar.projectKey=techstore \
                 -Dsonar.projectName="TechStore E-Commerce" \
                 -Dsonar.sources=. \
                 -Dsonar.exclusions=venv/**,tests/**,**/__pycache__/** \
                 -Dsonar.python.coverage.reportPaths=coverage.xml
-            """
+            '''
         }
     }
 }
