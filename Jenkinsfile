@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE    = 'techstore-app'
-        DOCKER_HUB_USER = 'eslemd'
+        DOCKER_IMAGE = 'eslemd/techstore-app'
     }
 
     stages {
@@ -19,6 +18,7 @@ pipeline {
                 sh '''
                     python3 -m venv venv
                     . venv/bin/activate
+
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -56,6 +56,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
+
                     def scannerHome = tool 'SonarScanner'
 
                     withSonarQubeEnv('SonarQube') {
@@ -106,9 +107,8 @@ pipeline {
                     sh """
                         echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
 
-                        docker tag ${DOCKER_IMAGE}:latest \$DOCKER_USER/${DOCKER_IMAGE}:latest
-
-                        docker push \$DOCKER_USER/${DOCKER_IMAGE}:latest
+                        docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                        docker push ${DOCKER_IMAGE}:latest
                     """
                 }
             }
@@ -116,36 +116,48 @@ pipeline {
 
         stage('Deploy') {
             steps {
+
                 sh """
                     docker stop techstore-app || true
                     docker rm techstore-app || true
 
+                    docker pull ${DOCKER_IMAGE}:latest
+
                     docker run -d \
                         --name techstore-app \
                         -p 5000:5000 \
-                        ${DOCKER_HUB_USER}/${DOCKER_IMAGE}:latest
+                        ${DOCKER_IMAGE}:latest
                 """
             }
         }
 
         stage('Smoke Test') {
             steps {
+
                 sh '''
                     sleep 10
 
                     STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
 
                     if [ "$STATUS" != "200" ]; then
+                        echo "Smoke test failed!"
                         exit 1
                     fi
+
+                    echo "Smoke test passed!"
                 '''
             }
         }
     }
 
     post {
+
         always {
-            sh "docker image prune -f || true"
+
+            sh '''
+                docker image prune -f || true
+            '''
+
             cleanWs()
         }
     }
