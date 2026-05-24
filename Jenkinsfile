@@ -129,15 +129,24 @@ pipeline {
             }
         }
 
-        stage('Smoke Test') {
+       stage('Smoke Test') {
             steps {
                 sh '''
+                    echo "Container durumunu kontrol ediliyor..."
+                    docker ps -a --filter "name=techstore-app"
+
+                    echo "Uygulama logları kontrol ediliyor (Olası çökme nedenleri için):"
+                    docker logs techstore-app
+
                     sleep 10
 
-                    STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
+                    # Container'ın kendi içinden localine istek atmasını sağlıyoruz, network karmaşasını çözer.
+                    STATUS=$(docker exec techstore-app curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
+
+                    echo "Gelen HTTP Durum Kodu: $STATUS"
 
                     if [ "$STATUS" != "200" ]; then
-                        echo "Smoke test failed!"
+                        echo "Smoke test failed! Status: $STATUS"
                         exit 1
                     fi
 
