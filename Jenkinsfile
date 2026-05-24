@@ -84,9 +84,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    docker builder prune -af || true
 
-                    DOCKER_BUILDKIT=0 docker build \
+                    DOCKER_BUILDKIT=1 docker build \
                     -t ${DOCKER_IMAGE}:${BUILD_NUMBER} \
                     -t ${DOCKER_IMAGE}:latest .
                 '''
