@@ -162,11 +162,20 @@ pipeline {
         }
 
         success {
-            echo 'Pipeline completed successfully!'
+            // URL kısmına tırnak işaretleri arasına api.slack.com'dan aldığın "https://hooks.slack.com/services/..." linkinin tamamını yapıştır
+            slackSend channel: '#devops',
+                      color: '#00FF00',
+                      baseUrl: 'https://hooks.slack.com/services/',
+                      token: 'T08XXXXXX/B08XXXXXX/XXXXXXXXXXXXXXXXXXXX', // services/ kısmından sonra gelen o 3 parçalı token kısmı
+                      message: "Build Başarılı! Proje: ${env.JOB_NAME} Build No: #${env.BUILD_NUMBER} deplasman tamamlandı!"
         }
 
         failure {
-            echo 'Pipeline failed!'
+            slackSend channel: '#devops',
+                      color: '#FF0000',
+                      baseUrl: 'https://hooks.slack.com/services/',
+                      token: 'T08XXXXXX/B08XXXXXX/XXXXXXXXXXXXXXXXXXXX', // Aynı şekilde buraya da yapıştır
+                      message: "Build Başarısız! ❌ Proje: ${env.JOB_NAME} Build No: #${env.BUILD_NUMBER} hata verdi!"
         }
     }
 }
