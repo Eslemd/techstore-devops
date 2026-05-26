@@ -155,7 +155,7 @@ pipeline {
         }
     }
 
-   post {
+post {
         always {
             sh 'docker image prune -f'
             cleanWs()
@@ -168,5 +168,5 @@ pipeline {
         failure {
             sh "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Build Başarısız! ❌ \\nProje: ${env.JOB_NAME} \\nBuild No: #${env.BUILD_NUMBER} \\nPipeline bir aşamada hata verdi. Konsol loglarını kontrol edin.\"}' https://hooks.slack.com/services/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"
         }
-    }
+        }   
 }
