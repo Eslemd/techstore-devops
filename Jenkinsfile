@@ -155,27 +155,18 @@ pipeline {
         }
     }
 
-    post {
+   post {
         always {
             sh 'docker image prune -f'
             cleanWs()
         }
 
         success {
-            // URL kısmına tırnak işaretleri arasına api.slack.com'dan aldığın "https://hooks.slack.com/services/..." linkinin tamamını yapıştır
-            slackSend channel: '#devops',
-                      color: '#00FF00',
-                      baseUrl: 'https://hooks.slack.com/services/',
-                      token: 'T08XXXXXX/B08XXXXXX/XXXXXXXXXXXXXXXXXXXX', // services/ kısmından sonra gelen o 3 parçalı token kısmı
-                      message: "Build Başarılı! Proje: ${env.JOB_NAME} Build No: #${env.BUILD_NUMBER} deplasman tamamlandı!"
+            sh "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Build Başarılı! ✅ \\nProje: ${env.JOB_NAME} \\nBuild No: #${env.BUILD_NUMBER} \\nUygulama başarıyla deploy edildi ve smoke testten geçti!\"}' https://hooks.slack.com/services/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"
         }
 
         failure {
-            slackSend channel: '#devops',
-                      color: '#FF0000',
-                      baseUrl: 'https://hooks.slack.com/services/',
-                      token: 'T08XXXXXX/B08XXXXXX/XXXXXXXXXXXXXXXXXXXX', // Aynı şekilde buraya da yapıştır
-                      message: "Build Başarısız! ❌ Proje: ${env.JOB_NAME} Build No: #${env.BUILD_NUMBER} hata verdi!"
+            sh "curl -X POST -H 'Content-type: application/json' --data '{\"text\":\"Build Başarısız! ❌ \\nProje: ${env.JOB_NAME} \\nBuild No: #${env.BUILD_NUMBER} \\nPipeline bir aşamada hata verdi. Konsol loglarını kontrol edin.\"}' https://hooks.slack.com/services/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"
         }
     }
 }
